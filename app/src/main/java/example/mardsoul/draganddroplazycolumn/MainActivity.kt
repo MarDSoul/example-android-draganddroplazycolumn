@@ -8,8 +8,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.ui.Modifier
 import dagger.hilt.android.AndroidEntryPoint
-import example.mardsoul.draganddroplazycolumn.ui.LazyColumnKeysApp
-import example.mardsoul.draganddroplazycolumn.ui.theme.ExampleLazyColumnKeysTheme
+import example.mardsoul.draganddroplazycolumn.ui.LazyColumnApp
+import example.mardsoul.draganddroplazycolumn.ui.theme.ExampleLazyColumnTheme
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -17,9 +17,9 @@ class MainActivity : ComponentActivity() {
 		super.onCreate(savedInstanceState)
 
 		setContent {
-			ExampleLazyColumnKeysTheme {
+			ExampleLazyColumnTheme {
 				Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-					LazyColumnKeysApp(modifier = Modifier.padding(innerPadding))
+					LazyColumnApp(modifier = Modifier.padding(innerPadding))
 				}
 			}
 		}

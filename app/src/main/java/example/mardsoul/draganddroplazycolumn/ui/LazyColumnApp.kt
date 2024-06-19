@@ -33,7 +33,7 @@ import example.mardsoul.draganddroplazycolumn.R
 import kotlinx.coroutines.launch
 
 @Composable
-fun LazyColumnKeysApp(
+fun LazyColumnApp(
 	modifier: Modifier = Modifier,
 	viewModel: AppViewModel = hiltViewModel(),
 ) {
