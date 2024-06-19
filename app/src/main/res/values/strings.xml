@@ -1,3 +1,7 @@
 <resources>
-    <string name="app_name">Example LazyColumn keys</string>
+    <string name="app_name">Example DragAndDropLazyColumn</string>
+    <string name="add_button_text">Add user</string>
+    <string name="clear_button_text">Clear list</string>
+    <string name="user_id_label">Id:</string>
+    <string name="user_name_label">Name:</string>
 </resources>

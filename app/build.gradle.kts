@@ -1,14 +1,16 @@
 plugins {
 	alias(libs.plugins.android.application)
 	alias(libs.plugins.jetbrains.kotlin.android)
+	alias(libs.plugins.ksp)
+	alias(libs.plugins.hilt)
 }
 
 android {
-	namespace = "example.mardsoul.lazycolumnkeys"
+	namespace = "example.mardsoul.draganddroplazycolumn"
 	compileSdk = 34
 
 	defaultConfig {
-		applicationId = "example.mardsoul.lazycolumnkeys"
+		applicationId = "example.mardsoul.draganddroplazycolumn"
 		minSdk = 29
 		targetSdk = 34
 		versionCode = 1
@@ -40,7 +42,7 @@ android {
 		compose = true
 	}
 	composeOptions {
-		kotlinCompilerExtensionVersion = "1.5.1"
+		kotlinCompilerExtensionVersion = "1.5.13"
 	}
 	packaging {
 		resources {
@@ -66,4 +68,14 @@ dependencies {
 	androidTestImplementation(libs.androidx.ui.test.junit4)
 	debugImplementation(libs.androidx.ui.tooling)
 	debugImplementation(libs.androidx.ui.test.manifest)
+
+	//Hilt
+	implementation(libs.hilt.android)
+	ksp(libs.hilt.android.compiler)
+	implementation(libs.hilt.navigation.compose)
+
+	//Room
+	implementation(libs.room.runtime)
+	ksp(libs.room.compiler)
+	implementation(libs.room.ktx)
 }

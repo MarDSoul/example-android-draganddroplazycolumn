@@ -19,5 +19,5 @@ dependencyResolutionManagement {
 	}
 }
 
-rootProject.name = "Example LazyColumn keys"
+rootProject.name = "Drag and Drop LazyColumn"
 include(":app")

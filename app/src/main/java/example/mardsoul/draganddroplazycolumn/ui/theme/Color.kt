@@ -1,4 +1,4 @@
-package example.mardsoul.lazycolumnkeys.ui.theme
+package example.mardsoul.draganddroplazycolumn.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
