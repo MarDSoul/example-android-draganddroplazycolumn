@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import example.mardsoul.draganddroplazycolumn.domain.UserEntity
 import example.mardsoul.draganddroplazycolumn.domain.UserRepository
+import example.mardsoul.draganddroplazycolumn.ui.components.toUiUser
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch

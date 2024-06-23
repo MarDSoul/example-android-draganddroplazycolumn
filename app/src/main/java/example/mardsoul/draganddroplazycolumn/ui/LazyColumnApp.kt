@@ -1,5 +1,7 @@
 package example.mardsoul.draganddroplazycolumn.ui
 
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,7 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.MoreVert
@@ -23,13 +25,23 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import example.mardsoul.draganddroplazycolumn.R
+import example.mardsoul.draganddroplazycolumn.ui.components.rememberDragAndDropListState
+import example.mardsoul.draganddroplazycolumn.util.move
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 @Composable
@@ -41,6 +53,7 @@ fun LazyColumnApp(
 	val uiState by viewModel.uiState.collectAsState()
 	val lazyListState = rememberLazyListState()
 	val coroutineScope = rememberCoroutineScope()
+	var overscrollJob by remember { mutableStateOf<Job?>(null) }
 
 	Column(
 		modifier = modifier
@@ -90,16 +103,56 @@ fun LazyColumnApp(
 			}
 
 			is UiState.Success -> {
-				val users = state.data
+				val users = state.data.toMutableStateList()
+				val dragAndDropListState =
+					rememberDragAndDropListState(lazyListState) { from, to ->
+						users.move(from, to)
+					}
 				LazyColumn(
-					state = lazyListState,
 					modifier = Modifier
 						.fillMaxSize()
 						.weight(1f)
-				) {
-					items(users, key = { it.id }) {
-						ItemCard(userEntityUi = it, modifier = Modifier.fillMaxWidth())
+						.pointerInput(Unit) {
+							detectDragGesturesAfterLongPress(
+								onDrag = { change, offset ->
+									change.consume()
+									dragAndDropListState.onDrag(offset)
 
+									if (overscrollJob?.isActive == true) return@detectDragGesturesAfterLongPress
+
+									dragAndDropListState
+										.checkOverscroll()
+										.takeIf { it != 0f }
+										?.let {
+											overscrollJob = coroutineScope.launch {
+												dragAndDropListState.lazyListState.scrollBy(it)
+											}
+										} ?: kotlin.run { overscrollJob?.cancel() }
+
+								},
+								onDragStart = { offset ->
+									dragAndDropListState.onDragStart(offset)
+								},
+								onDragEnd = { dragAndDropListState.onDragInterrupted() },
+								onDragCancel = { dragAndDropListState.onDragInterrupted() }
+							)
+						},
+					state = dragAndDropListState.lazyListState
+				) {
+					itemsIndexed(users) { index, user ->
+						ItemCard(
+							userEntityUi = user,
+							modifier = Modifier
+								.composed {
+									val offsetOrNull =
+										dragAndDropListState.elementDisplacement.takeIf {
+											index == dragAndDropListState.currentIndexOfDraggedItem
+										}
+									Modifier.graphicsLayer {
+										translationY = offsetOrNull ?: 0f
+									}
+								}
+						)
 					}
 				}
 			}
@@ -111,7 +164,9 @@ fun LazyColumnApp(
 fun ItemCard(userEntityUi: UserEntityUi, modifier: Modifier = Modifier) {
 	Card(
 		shape = MaterialTheme.shapes.small,
-		modifier = modifier.padding(dimensionResource(R.dimen.small_padding))
+		modifier = modifier
+			.fillMaxWidth()
+			.padding(dimensionResource(R.dimen.small_padding))
 	) {
 		Row(
 			verticalAlignment = Alignment.CenterVertically,
