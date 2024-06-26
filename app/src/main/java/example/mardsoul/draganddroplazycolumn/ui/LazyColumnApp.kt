@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
@@ -39,8 +40,10 @@ import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import example.mardsoul.draganddroplazycolumn.R
+import example.mardsoul.draganddroplazycolumn.ui.components.DragAndDropListState
 import example.mardsoul.draganddroplazycolumn.ui.components.rememberDragAndDropListState
 import example.mardsoul.draganddroplazycolumn.util.move
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
@@ -112,47 +115,23 @@ fun LazyColumnApp(
 					modifier = Modifier
 						.fillMaxSize()
 						.weight(1f)
-						.pointerInput(Unit) {
-							detectDragGesturesAfterLongPress(
-								onDrag = { change, offset ->
-									change.consume()
-									dragAndDropListState.onDrag(offset)
-
-									if (overscrollJob?.isActive == true) return@detectDragGesturesAfterLongPress
-
-									dragAndDropListState
-										.checkOverscroll()
-										.takeIf { it != 0f }
-										?.let {
-											overscrollJob = coroutineScope.launch {
-												dragAndDropListState.lazyListState.scrollBy(it)
-											}
-										} ?: kotlin.run { overscrollJob?.cancel() }
-
-								},
-								onDragStart = { offset ->
-									dragAndDropListState.onDragStart(offset)
-								},
-								onDragEnd = { dragAndDropListState.onDragInterrupted() },
-								onDragCancel = { dragAndDropListState.onDragInterrupted() }
-							)
-						},
+						.dragContainer(
+							dragAndDropListState = dragAndDropListState,
+							overscrollJob = overscrollJob,
+							coroutineScope = coroutineScope
+						),
 					state = dragAndDropListState.lazyListState
 				) {
 					itemsIndexed(users) { index, user ->
-						ItemCard(
-							userEntityUi = user,
-							modifier = Modifier
-								.composed {
-									val offsetOrNull =
-										dragAndDropListState.elementDisplacement.takeIf {
-											index == dragAndDropListState.currentIndexOfDraggedItem
-										}
-									Modifier.graphicsLayer {
-										translationY = offsetOrNull ?: 0f
-									}
-								}
-						)
+						DraggableItem(
+							dragAndDropListState = dragAndDropListState,
+							index = index
+						) { modifier ->
+							ItemCard(
+								userEntityUi = user,
+								modifier = modifier
+							)
+						}
 					}
 				}
 			}
@@ -191,4 +170,56 @@ fun ItemCard(userEntityUi: UserEntityUi, modifier: Modifier = Modifier) {
 			Text(text = userEntityUi.name, style = MaterialTheme.typography.bodyMedium)
 		}
 	}
+}
+
+fun Modifier.dragContainer(
+	dragAndDropListState: DragAndDropListState,
+	overscrollJob: Job?,
+	coroutineScope: CoroutineScope
+): Modifier {
+	var coroutineJob = overscrollJob
+	return this.pointerInput(Unit) {
+		detectDragGesturesAfterLongPress(
+			onDrag = { change, offset ->
+				change.consume()
+				dragAndDropListState.onDrag(offset)
+
+				if (overscrollJob?.isActive == true) return@detectDragGesturesAfterLongPress
+
+				dragAndDropListState
+					.checkOverscroll()
+					.takeIf { it != 0f }
+					?.let {
+						coroutineJob = coroutineScope.launch {
+							dragAndDropListState.lazyListState.scrollBy(it)
+						}
+					} ?: kotlin.run { coroutineJob?.cancel() }
+
+			},
+			onDragStart = { offset ->
+				dragAndDropListState.onDragStart(offset)
+			},
+			onDragEnd = { dragAndDropListState.onDragInterrupted() },
+			onDragCancel = { dragAndDropListState.onDragInterrupted() }
+		)
+	}
+}
+
+@Composable
+fun LazyItemScope.DraggableItem(
+	dragAndDropListState: DragAndDropListState,
+	index: Int,
+	content: @Composable LazyItemScope.(Modifier) -> Unit
+) {
+	val draggingModifier = Modifier
+		.composed {
+			val offsetOrNull =
+				dragAndDropListState.elementDisplacement.takeIf {
+					index == dragAndDropListState.currentIndexOfDraggedItem
+				}
+			Modifier.graphicsLayer {
+				translationY = offsetOrNull ?: 0f
+			}
+		}
+	content(draggingModifier)
 }
