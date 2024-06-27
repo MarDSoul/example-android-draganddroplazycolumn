@@ -1,7 +1,6 @@
 package example.mardsoul.draganddroplazycolumn.ui
 
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
-import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,10 +25,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -43,8 +39,6 @@ import example.mardsoul.draganddroplazycolumn.R
 import example.mardsoul.draganddroplazycolumn.ui.components.DragAndDropListState
 import example.mardsoul.draganddroplazycolumn.ui.components.rememberDragAndDropListState
 import example.mardsoul.draganddroplazycolumn.util.move
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 @Composable
@@ -56,7 +50,6 @@ fun LazyColumnApp(
 	val uiState by viewModel.uiState.collectAsState()
 	val lazyListState = rememberLazyListState()
 	val coroutineScope = rememberCoroutineScope()
-	var overscrollJob by remember { mutableStateOf<Job?>(null) }
 
 	Column(
 		modifier = modifier
@@ -115,11 +108,7 @@ fun LazyColumnApp(
 					modifier = Modifier
 						.fillMaxSize()
 						.weight(1f)
-						.dragContainer(
-							dragAndDropListState = dragAndDropListState,
-							overscrollJob = overscrollJob,
-							coroutineScope = coroutineScope
-						),
+						.dragContainer(dragAndDropListState = dragAndDropListState),
 					state = dragAndDropListState.lazyListState
 				) {
 					itemsIndexed(users) { index, user ->
@@ -174,27 +163,12 @@ fun ItemCard(userEntityUi: UserEntityUi, modifier: Modifier = Modifier) {
 
 fun Modifier.dragContainer(
 	dragAndDropListState: DragAndDropListState,
-	overscrollJob: Job?,
-	coroutineScope: CoroutineScope
 ): Modifier {
-	var coroutineJob = overscrollJob
 	return this.pointerInput(Unit) {
 		detectDragGesturesAfterLongPress(
 			onDrag = { change, offset ->
 				change.consume()
 				dragAndDropListState.onDrag(offset)
-
-				if (overscrollJob?.isActive == true) return@detectDragGesturesAfterLongPress
-
-				dragAndDropListState
-					.checkOverscroll()
-					.takeIf { it != 0f }
-					?.let {
-						coroutineJob = coroutineScope.launch {
-							dragAndDropListState.lazyListState.scrollBy(it)
-						}
-					} ?: kotlin.run { coroutineJob?.cancel() }
-
 			},
 			onDragStart = { offset ->
 				dragAndDropListState.onDragStart(offset)

@@ -1,27 +1,39 @@
 package example.mardsoul.draganddroplazycolumn.ui.components
 
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.lazy.LazyListItemInfo
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Offset
+import kotlinx.coroutines.channels.Channel
 
 @Composable
 fun rememberDragAndDropListState(
 	lazyListState: LazyListState,
 	onMove: (Int, Int) -> Unit
 ): DragAndDropListState {
-	return remember { DragAndDropListState(lazyListState, onMove) }
+	val state = remember { DragAndDropListState(lazyListState, onMove) }
+	LaunchedEffect(state) {
+		while (true) {
+			val diff = state.scrollChannel.receive()
+			state.lazyListState.scrollBy(diff)
+		}
+	}
+	return state
 }
 
 class DragAndDropListState(
 	val lazyListState: LazyListState,
 	private val onMove: (Int, Int) -> Unit
 ) {
+	val scrollChannel = Channel<Float>()
+
 	private var draggingDistance by mutableFloatStateOf(0f)
 	private var initialDraggingElement by mutableStateOf<LazyListItemInfo?>(null)
 	var currentIndexOfDraggedItem by mutableStateOf<Int?>(null)
@@ -61,7 +73,7 @@ class DragAndDropListState(
 			val endOffset = bottom.toFloat() + draggingDistance
 
 			currentElement?.let { current ->
-				lazyListState.layoutInfo.visibleItemsInfo
+				val targetElement = lazyListState.layoutInfo.visibleItemsInfo
 					.filterNot { item ->
 						item.offsetEnd < startOffset || item.offset > endOffset || current.index == item.index
 					}
@@ -72,6 +84,10 @@ class DragAndDropListState(
 							else -> item.offsetEnd < endOffset
 						}
 					}
+				if (targetElement == null) {
+					checkOverscroll()
+				}
+				targetElement
 			}?.also { item ->
 				currentIndexOfDraggedItem?.let { current ->
 					onMove.invoke(current, item.index)
@@ -81,15 +97,14 @@ class DragAndDropListState(
 		}
 	}
 
-	fun checkOverscroll(): Float {
-		return initialDraggingElement?.let {
+	private fun checkOverscroll() {
+		val overscroll = initialDraggingElement?.let {
 			val startOffset = it.offset + draggingDistance
 			val endOffset = it.offsetEnd + draggingDistance
 
 			return@let when {
 				draggingDistance > 0 -> {
 					(endOffset - lazyListState.layoutInfo.viewportEndOffset).takeIf { diff -> diff > 0 }
-
 				}
 
 				draggingDistance < 0 -> {
@@ -99,6 +114,10 @@ class DragAndDropListState(
 				else -> null
 			}
 		} ?: 0f
+
+		if (overscroll != 0f) {
+			scrollChannel.trySend(overscroll)
+		}
 	}
 
 	private fun LazyListState.getVisibleItemInfo(itemPosition: Int): LazyListItemInfo? {
