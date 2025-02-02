@@ -1,7 +1,6 @@
 package example.mardsoul.draganddroplazycolumn.ui
 
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
-import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
@@ -25,10 +25,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -39,9 +36,9 @@ import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import example.mardsoul.draganddroplazycolumn.R
+import example.mardsoul.draganddroplazycolumn.ui.components.DragAndDropListState
 import example.mardsoul.draganddroplazycolumn.ui.components.rememberDragAndDropListState
 import example.mardsoul.draganddroplazycolumn.util.move
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 @Composable
@@ -53,7 +50,6 @@ fun LazyColumnApp(
 	val uiState by viewModel.uiState.collectAsState()
 	val lazyListState = rememberLazyListState()
 	val coroutineScope = rememberCoroutineScope()
-	var overscrollJob by remember { mutableStateOf<Job?>(null) }
 
 	Column(
 		modifier = modifier
@@ -112,47 +108,19 @@ fun LazyColumnApp(
 					modifier = Modifier
 						.fillMaxSize()
 						.weight(1f)
-						.pointerInput(Unit) {
-							detectDragGesturesAfterLongPress(
-								onDrag = { change, offset ->
-									change.consume()
-									dragAndDropListState.onDrag(offset)
-
-									if (overscrollJob?.isActive == true) return@detectDragGesturesAfterLongPress
-
-									dragAndDropListState
-										.checkOverscroll()
-										.takeIf { it != 0f }
-										?.let {
-											overscrollJob = coroutineScope.launch {
-												dragAndDropListState.lazyListState.scrollBy(it)
-											}
-										} ?: kotlin.run { overscrollJob?.cancel() }
-
-								},
-								onDragStart = { offset ->
-									dragAndDropListState.onDragStart(offset)
-								},
-								onDragEnd = { dragAndDropListState.onDragInterrupted() },
-								onDragCancel = { dragAndDropListState.onDragInterrupted() }
-							)
-						},
+						.dragContainer(dragAndDropListState = dragAndDropListState),
 					state = dragAndDropListState.lazyListState
 				) {
 					itemsIndexed(users) { index, user ->
-						ItemCard(
-							userEntityUi = user,
-							modifier = Modifier
-								.composed {
-									val offsetOrNull =
-										dragAndDropListState.elementDisplacement.takeIf {
-											index == dragAndDropListState.currentIndexOfDraggedItem
-										}
-									Modifier.graphicsLayer {
-										translationY = offsetOrNull ?: 0f
-									}
-								}
-						)
+						DraggableItem(
+							dragAndDropListState = dragAndDropListState,
+							index = index
+						) { modifier ->
+							ItemCard(
+								userEntityUi = user,
+								modifier = modifier
+							)
+						}
 					}
 				}
 			}
@@ -191,4 +159,41 @@ fun ItemCard(userEntityUi: UserEntityUi, modifier: Modifier = Modifier) {
 			Text(text = userEntityUi.name, style = MaterialTheme.typography.bodyMedium)
 		}
 	}
+}
+
+fun Modifier.dragContainer(
+	dragAndDropListState: DragAndDropListState,
+): Modifier {
+	return this.pointerInput(Unit) {
+		detectDragGesturesAfterLongPress(
+			onDrag = { change, offset ->
+				change.consume()
+				dragAndDropListState.onDrag(offset)
+			},
+			onDragStart = { offset ->
+				dragAndDropListState.onDragStart(offset)
+			},
+			onDragEnd = { dragAndDropListState.onDragInterrupted() },
+			onDragCancel = { dragAndDropListState.onDragInterrupted() }
+		)
+	}
+}
+
+@Composable
+fun LazyItemScope.DraggableItem(
+	dragAndDropListState: DragAndDropListState,
+	index: Int,
+	content: @Composable LazyItemScope.(Modifier) -> Unit
+) {
+	val draggingModifier = Modifier
+		.composed {
+			val offsetOrNull =
+				dragAndDropListState.elementDisplacement.takeIf {
+					index == dragAndDropListState.currentIndexOfDraggedItem
+				}
+			Modifier.graphicsLayer {
+				translationY = offsetOrNull ?: 0f
+			}
+		}
+	content(draggingModifier)
 }
