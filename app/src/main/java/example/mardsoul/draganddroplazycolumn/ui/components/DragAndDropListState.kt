@@ -9,6 +9,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Offset
 import kotlinx.coroutines.channels.Channel
@@ -18,7 +19,8 @@ fun rememberDragAndDropListState(
     lazyListState: LazyListState,
     onMove: (Int, Int) -> Unit
 ): DragAndDropListState {
-    val state = remember { DragAndDropListState(lazyListState, onMove) }
+    val currentOnMove by rememberUpdatedState(onMove)
+    val state = remember { DragAndDropListState(lazyListState) { from, to -> currentOnMove(from, to) } }
     LaunchedEffect(state) {
         while (true) {
             val diff = state.scrollChannel.receive()

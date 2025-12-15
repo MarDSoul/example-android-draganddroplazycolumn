@@ -25,6 +25,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
@@ -99,7 +100,7 @@ fun LazyColumnApp(
 			}
 
 			is UiState.Success -> {
-				val users = state.data.toMutableStateList()
+				val users = remember(state.data) { state.data.toMutableStateList() }
 				val dragAndDropListState =
 					rememberDragAndDropListState(lazyListState) { from, to ->
 						users.move(from, to)
