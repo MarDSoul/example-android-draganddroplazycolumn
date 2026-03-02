@@ -3,7 +3,7 @@
 This is an example for article:
 **How to create LazyColumn with drag and drop elements in Jetpack Compose.**
 
-[Link to the article Part 1 on dev.to](https://dev.to/mardsoul/how-to-create-lazycolumn-with-drag-and-drop-elements-in-jetpack-compose-part-1-4bn5)
+*The article doesn't exist now because the account on dev.to has been deleted*
 
 ### Application description
 It's just a screen with LazyColumn and 2 buttons (Add user and Clear list). Data of users have stored in a database.
